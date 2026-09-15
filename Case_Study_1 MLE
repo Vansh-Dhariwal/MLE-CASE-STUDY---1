@@ -1,0 +1,791 @@
+{
+  "nbformat": 4,
+  "nbformat_minor": 0,
+  "metadata": {
+    "colab": {
+      "provenance": []
+    },
+    "kernelspec": {
+      "name": "python3",
+      "display_name": "Python 3"
+    },
+    "language_info": {
+      "name": "python"
+    }
+  },
+  "cells": [
+    {
+      "cell_type": "code",
+      "execution_count": 17,
+      "metadata": {
+        "id": "1Uw9ctRCQJDI"
+      },
+      "outputs": [],
+      "source": [
+        "import pandas as pd\n",
+        "import numpy as np\n",
+        "import matplotlib.pyplot as plt\n",
+        "\n",
+        "from sklearn.model_selection import train_test_split\n",
+        "from sklearn.preprocessing import StandardScaler, OneHotEncoder\n",
+        "from sklearn.compose import ColumnTransformer\n",
+        "from sklearn.pipeline import Pipeline\n",
+        "from sklearn.impute import SimpleImputer\n",
+        "\n",
+        "from sklearn.linear_model import LogisticRegression\n",
+        "\n",
+        "from sklearn.metrics import (\n",
+        "    roc_auc_score,\n",
+        "    confusion_matrix,\n",
+        "    classification_report,\n",
+        "    roc_curve\n",
+        ")\n"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "data = pd.read_csv(\"diabetic_data.csv\")\n",
+        "\n",
+        "print(\"Dataset loaded successfully!\")\n",
+        "\n"
+      ],
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "23lUkUTKRAMT",
+        "outputId": "5267108f-4420-4e29-be54-4e23001e27eb"
+      },
+      "execution_count": 18,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "Dataset loaded successfully!\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "print(\"\\nDataset shape:\")\n",
+        "print(data.shape)\n",
+        "\n",
+        "print(\"\\nFirst 5 rows:\")\n",
+        "print(data.head())\n",
+        "\n"
+      ],
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "rWbwtug-RnSU",
+        "outputId": "3fa5a4de-1c69-405b-ee25-07f676d04ad3"
+      },
+      "execution_count": 19,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "\n",
+            "Dataset shape:\n",
+            "(101766, 50)\n",
+            "\n",
+            "First 5 rows:\n",
+            "   encounter_id  patient_nbr             race  gender      age weight  \\\n",
+            "0       2278392      8222157        Caucasian  Female   [0-10)      ?   \n",
+            "1        149190     55629189        Caucasian  Female  [10-20)      ?   \n",
+            "2         64410     86047875  AfricanAmerican  Female  [20-30)      ?   \n",
+            "3        500364     82442376        Caucasian    Male  [30-40)      ?   \n",
+            "4         16680     42519267        Caucasian    Male  [40-50)      ?   \n",
+            "\n",
+            "   admission_type_id  discharge_disposition_id  admission_source_id  \\\n",
+            "0                  6                        25                    1   \n",
+            "1                  1                         1                    7   \n",
+            "2                  1                         1                    7   \n",
+            "3                  1                         1                    7   \n",
+            "4                  1                         1                    7   \n",
+            "\n",
+            "   time_in_hospital  ... citoglipton insulin  glyburide-metformin  \\\n",
+            "0                 1  ...          No      No                   No   \n",
+            "1                 3  ...          No      Up                   No   \n",
+            "2                 2  ...          No      No                   No   \n",
+            "3                 2  ...          No      Up                   No   \n",
+            "4                 1  ...          No  Steady                   No   \n",
+            "\n",
+            "   glipizide-metformin  glimepiride-pioglitazone  metformin-rosiglitazone  \\\n",
+            "0                   No                        No                       No   \n",
+            "1                   No                        No                       No   \n",
+            "2                   No                        No                       No   \n",
+            "3                   No                        No                       No   \n",
+            "4                   No                        No                       No   \n",
+            "\n",
+            "   metformin-pioglitazone  change diabetesMed readmitted  \n",
+            "0                      No      No          No         NO  \n",
+            "1                      No      Ch         Yes        >30  \n",
+            "2                      No      No         Yes         NO  \n",
+            "3                      No      Ch         Yes         NO  \n",
+            "4                      No      Ch         Yes         NO  \n",
+            "\n",
+            "[5 rows x 50 columns]\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "print(\"\\nColumn names:\")\n",
+        "print(data.columns.tolist())\n"
+      ],
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "pyPxqCk3Ruds",
+        "outputId": "ae387309-fdcd-4cb6-8ebd-bf274eadd9fa"
+      },
+      "execution_count": 20,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "\n",
+            "Column names:\n",
+            "['encounter_id', 'patient_nbr', 'race', 'gender', 'age', 'weight', 'admission_type_id', 'discharge_disposition_id', 'admission_source_id', 'time_in_hospital', 'payer_code', 'medical_specialty', 'num_lab_procedures', 'num_procedures', 'num_medications', 'number_outpatient', 'number_emergency', 'number_inpatient', 'diag_1', 'diag_2', 'diag_3', 'number_diagnoses', 'max_glu_serum', 'A1Cresult', 'metformin', 'repaglinide', 'nateglinide', 'chlorpropamide', 'glimepiride', 'acetohexamide', 'glipizide', 'glyburide', 'tolbutamide', 'pioglitazone', 'rosiglitazone', 'acarbose', 'miglitol', 'troglitazone', 'tolazamide', 'examide', 'citoglipton', 'insulin', 'glyburide-metformin', 'glipizide-metformin', 'glimepiride-pioglitazone', 'metformin-rosiglitazone', 'metformin-pioglitazone', 'change', 'diabetesMed', 'readmitted']\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "print(\"\\nMissing values:\")\n",
+        "print(data.isnull().sum())\n"
+      ],
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "TVi4SC4uRv-I",
+        "outputId": "d63d9514-6705-4867-e435-d0c39a3346eb"
+      },
+      "execution_count": 21,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "\n",
+            "Missing values:\n",
+            "encounter_id                    0\n",
+            "patient_nbr                     0\n",
+            "race                            0\n",
+            "gender                          0\n",
+            "age                             0\n",
+            "weight                          0\n",
+            "admission_type_id               0\n",
+            "discharge_disposition_id        0\n",
+            "admission_source_id             0\n",
+            "time_in_hospital                0\n",
+            "payer_code                      0\n",
+            "medical_specialty               0\n",
+            "num_lab_procedures              0\n",
+            "num_procedures                  0\n",
+            "num_medications                 0\n",
+            "number_outpatient               0\n",
+            "number_emergency                0\n",
+            "number_inpatient                0\n",
+            "diag_1                          0\n",
+            "diag_2                          0\n",
+            "diag_3                          0\n",
+            "number_diagnoses                0\n",
+            "max_glu_serum               96420\n",
+            "A1Cresult                   84748\n",
+            "metformin                       0\n",
+            "repaglinide                     0\n",
+            "nateglinide                     0\n",
+            "chlorpropamide                  0\n",
+            "glimepiride                     0\n",
+            "acetohexamide                   0\n",
+            "glipizide                       0\n",
+            "glyburide                       0\n",
+            "tolbutamide                     0\n",
+            "pioglitazone                    0\n",
+            "rosiglitazone                   0\n",
+            "acarbose                        0\n",
+            "miglitol                        0\n",
+            "troglitazone                    0\n",
+            "tolazamide                      0\n",
+            "examide                         0\n",
+            "citoglipton                     0\n",
+            "insulin                         0\n",
+            "glyburide-metformin             0\n",
+            "glipizide-metformin             0\n",
+            "glimepiride-pioglitazone        0\n",
+            "metformin-rosiglitazone         0\n",
+            "metformin-pioglitazone          0\n",
+            "change                          0\n",
+            "diabetesMed                     0\n",
+            "readmitted                      0\n",
+            "dtype: int64\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "data[\"readmitted_30d\"] = (\n",
+        "    data[\"readmitted\"] == \"<30\"\n",
+        ").astype(int)\n",
+        "\n",
+        "\n",
+        "print(\"\\nTarget distribution:\")\n",
+        "print(data[\"readmitted_30d\"].value_counts())\n",
+        "\n",
+        "print(\"\\nTarget percentages:\")\n",
+        "print(\n",
+        "    data[\"readmitted_30d\"]\n",
+        "    .value_counts(normalize=True) * 100\n",
+        ")\n"
+      ],
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "Ipm3aKNRR1Hp",
+        "outputId": "f34bc12d-09f4-48b3-a374-7c7ede96b325"
+      },
+      "execution_count": 22,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "\n",
+            "Target distribution:\n",
+            "readmitted_30d\n",
+            "0    90409\n",
+            "1    11357\n",
+            "Name: count, dtype: int64\n",
+            "\n",
+            "Target percentages:\n",
+            "readmitted_30d\n",
+            "0    88.840084\n",
+            "1    11.159916\n",
+            "Name: proportion, dtype: float64\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "age_mapping = {\n",
+        "    \"[0-10)\": 5,\n",
+        "    \"[10-20)\": 15,\n",
+        "    \"[20-30)\": 25,\n",
+        "    \"[30-40)\": 35,\n",
+        "    \"[40-50)\": 45,\n",
+        "    \"[50-60)\": 55,\n",
+        "    \"[60-70)\": 65,\n",
+        "    \"[70-80)\": 75,\n",
+        "    \"[80-90)\": 85,\n",
+        "    \"[90-100)\": 95\n",
+        "}\n",
+        "\n",
+        "data[\"age_numeric\"] = data[\"age\"].map(age_mapping)\n"
+      ],
+      "metadata": {
+        "id": "C0AmwyY8R4jB"
+      },
+      "execution_count": 23,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "data[\"diag_1\"] = data[\"diag_1\"].astype(str)\n",
+        "\n",
+        "data[\"diagnosis_group\"] = data[\"diag_1\"].str[:3]\n"
+      ],
+      "metadata": {
+        "id": "ysM8nkIfR64U"
+      },
+      "execution_count": 24,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "data = data.replace(\"?\", np.nan)"
+      ],
+      "metadata": {
+        "id": "sIPIYcatTJ1R"
+      },
+      "execution_count": 25,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "features = [\n",
+        "    \"age_numeric\",\n",
+        "    \"diagnosis_group\",\n",
+        "    \"time_in_hospital\",\n",
+        "    \"num_lab_procedures\",\n",
+        "    \"num_medications\",\n",
+        "    \"number_outpatient\",\n",
+        "    \"number_emergency\",\n",
+        "    \"number_inpatient\",\n",
+        "    \"number_diagnoses\"\n",
+        "]\n",
+        "\n",
+        "X = data[features]\n",
+        "\n",
+        "y = data[\"readmitted_30d\"]\n"
+      ],
+      "metadata": {
+        "id": "g4UjqPFoTMfG"
+      },
+      "execution_count": 26,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "print(\"\\nSelected features:\")\n",
+        "print(X.head())\n"
+      ],
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "Yp086aW4TYgS",
+        "outputId": "ab63cae0-4934-4df7-f32c-875e84591016"
+      },
+      "execution_count": 27,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "\n",
+            "Selected features:\n",
+            "   age_numeric diagnosis_group  time_in_hospital  num_lab_procedures  \\\n",
+            "0            5             250                 1                  41   \n",
+            "1           15             276                 3                  59   \n",
+            "2           25             648                 2                  11   \n",
+            "3           35               8                 2                  44   \n",
+            "4           45             197                 1                  51   \n",
+            "\n",
+            "   num_medications  number_outpatient  number_emergency  number_inpatient  \\\n",
+            "0                1                  0                 0                 0   \n",
+            "1               18                  0                 0                 0   \n",
+            "2               13                  2                 0                 1   \n",
+            "3               16                  0                 0                 0   \n",
+            "4                8                  0                 0                 0   \n",
+            "\n",
+            "   number_diagnoses  \n",
+            "0                 1  \n",
+            "1                 9  \n",
+            "2                 6  \n",
+            "3                 7  \n",
+            "4                 5  \n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "numeric_features = [\n",
+        "    \"age_numeric\",\n",
+        "    \"time_in_hospital\",\n",
+        "    \"num_lab_procedures\",\n",
+        "    \"num_medications\",\n",
+        "    \"number_outpatient\",\n",
+        "    \"number_emergency\",\n",
+        "    \"number_inpatient\",\n",
+        "    \"number_diagnoses\"\n",
+        "]\n",
+        "\n",
+        "categorical_features = [\n",
+        "    \"diagnosis_group\"\n",
+        "]\n"
+      ],
+      "metadata": {
+        "id": "bSgXDENKTanl"
+      },
+      "execution_count": 28,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "\n",
+        "numeric_pipeline = Pipeline([\n",
+        "    (\"imputer\", SimpleImputer(strategy=\"median\")),\n",
+        "    (\"scaler\", StandardScaler())\n",
+        "])\n"
+      ],
+      "metadata": {
+        "id": "fGex-wZ2TfmF"
+      },
+      "execution_count": 29,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "\n",
+        "categorical_pipeline = Pipeline([\n",
+        "    (\"imputer\", SimpleImputer(strategy=\"most_frequent\")),\n",
+        "    (\"encoder\", OneHotEncoder(\n",
+        "        handle_unknown=\"ignore\"\n",
+        "    ))\n",
+        "])\n",
+        "\n"
+      ],
+      "metadata": {
+        "id": "pWTvF7YdTh9G"
+      },
+      "execution_count": 30,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "preprocessor = ColumnTransformer([\n",
+        "    (\"numeric\", numeric_pipeline, numeric_features),\n",
+        "    (\"categorical\", categorical_pipeline, categorical_features)\n",
+        "])\n",
+        "\n",
+        "\n"
+      ],
+      "metadata": {
+        "id": "yeIdYCQQTj2C"
+      },
+      "execution_count": 31,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "model = LogisticRegression(\n",
+        "    penalty=\"l2\",\n",
+        "    C=1.0,\n",
+        "    max_iter=1000,\n",
+        "    random_state=42\n",
+        ")\n"
+      ],
+      "metadata": {
+        "id": "iS9NybK-TnSY"
+      },
+      "execution_count": 32,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "pipeline = Pipeline([\n",
+        "    (\"preprocessing\", preprocessor),\n",
+        "    (\"model\", model)\n",
+        "])\n",
+        "\n",
+        "\n",
+        "# ============================================================\n",
+        "# 12. SPLIT DATA\n",
+        "# ============================================================\n",
+        "\n",
+        "X_train, X_test, y_train, y_test = train_test_split(\n",
+        "    X,\n",
+        "    y,\n",
+        "    test_size=0.20,\n",
+        "    random_state=42,\n",
+        "    stratify=y\n",
+        ")\n",
+        "\n",
+        "\n",
+        "print(\"\\nTraining samples:\", len(X_train))\n",
+        "print(\"Testing samples:\", len(X_test))\n",
+        "\n",
+        "\n"
+      ],
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "x44oy8v_Tpa5",
+        "outputId": "d712fe04-e241-41f6-9da9-6b68672ce2c5"
+      },
+      "execution_count": 33,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "\n",
+            "Training samples: 81412\n",
+            "Testing samples: 20354\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "print(\"\\nTraining Logistic Regression...\")\n",
+        "\n",
+        "pipeline.fit(\n",
+        "    X_train,\n",
+        "    y_train\n",
+        ")\n",
+        "\n",
+        "print(\"Model trained successfully!\")\n"
+      ],
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "CvGZKA-1TsI2",
+        "outputId": "d1ab6e83-dcda-470e-f59d-9177372b992d"
+      },
+      "execution_count": 34,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "\n",
+            "Training Logistic Regression...\n",
+            "Model trained successfully!\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "y_pred = pipeline.predict(X_test)\n",
+        "\n",
+        "\n",
+        "# Probability that patient will be readmitted\n",
+        "y_probability = pipeline.predict_proba(X_test)[:, 1]\n"
+      ],
+      "metadata": {
+        "id": "ws2nDrVnTulO"
+      },
+      "execution_count": 35,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "roc_auc = roc_auc_score(\n",
+        "    y_test,\n",
+        "    y_probability\n",
+        ")\n",
+        "\n",
+        "print(\"\\n========================================\")\n",
+        "print(\"ROC-AUC SCORE\")\n",
+        "print(\"========================================\")\n",
+        "\n",
+        "print(\"ROC-AUC:\", round(roc_auc, 4))\n"
+      ],
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "-98ifiBqTyFg",
+        "outputId": "adccfa2e-ab24-4300-80a5-005dc2d56e63"
+      },
+      "execution_count": 36,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "\n",
+            "========================================\n",
+            "ROC-AUC SCORE\n",
+            "========================================\n",
+            "ROC-AUC: 0.6423\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "cm = confusion_matrix(\n",
+        "    y_test,\n",
+        "    y_pred\n",
+        ")\n",
+        "\n",
+        "print(\"\\n========================================\")\n",
+        "print(\"CONFUSION MATRIX\")\n",
+        "print(\"========================================\")\n",
+        "\n",
+        "print(cm)\n",
+        "\n"
+      ],
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "A8iAoSKjT1Qe",
+        "outputId": "5d23451d-9951-43d1-f004-dd1828639470"
+      },
+      "execution_count": 37,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "\n",
+            "========================================\n",
+            "CONFUSION MATRIX\n",
+            "========================================\n",
+            "[[18046    37]\n",
+            " [ 2235    36]]\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "tn, fp, fn, tp = cm.ravel()\n",
+        "\n",
+        "\n",
+        "print(\"\\nTrue Negatives :\", tn)\n",
+        "print(\"False Positives:\", fp)\n",
+        "print(\"False Negatives:\", fn)\n",
+        "print(\"True Positives :\", tp)\n",
+        "\n"
+      ],
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "yVkOiPYpT32s",
+        "outputId": "a6af8ee7-4ab5-4668-a45d-b543a9cab290"
+      },
+      "execution_count": 38,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "\n",
+            "True Negatives : 18046\n",
+            "False Positives: 37\n",
+            "False Negatives: 2235\n",
+            "True Positives : 36\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "print(\"\\n========================================\")\n",
+        "print(\"CLASSIFICATION REPORT\")\n",
+        "print(\"========================================\")\n",
+        "\n",
+        "print(\n",
+        "    classification_report(\n",
+        "        y_test,\n",
+        "        y_pred\n",
+        "    )\n",
+        ")\n",
+        "\n"
+      ],
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "W7cvIOuLT6Dv",
+        "outputId": "6861861a-f6ea-4683-a116-a46fa535cd40"
+      },
+      "execution_count": 42,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "\n",
+            "========================================\n",
+            "CLASSIFICATION REPORT\n",
+            "========================================\n",
+            "              precision    recall  f1-score   support\n",
+            "\n",
+            "           0       0.89      1.00      0.94     18083\n",
+            "           1       0.49      0.02      0.03      2271\n",
+            "\n",
+            "    accuracy                           0.89     20354\n",
+            "   macro avg       0.69      0.51      0.49     20354\n",
+            "weighted avg       0.85      0.89      0.84     20354\n",
+            "\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "print(\"\\n========================================\")\n",
+        "print(\"FINAL RESULTS\")\n",
+        "print(\"========================================\")\n",
+        "\n",
+        "print(\"ROC-AUC Score   :\", round(roc_auc, 4))\n",
+        "print(\"True Negatives  :\", tn)\n",
+        "print(\"False Positives :\", fp)\n",
+        "print(\"False Negatives :\", fn)\n",
+        "print(\"True Positives  :\", tp)\n",
+        "\n"
+      ],
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "tyO595QHUZ2b",
+        "outputId": "ec7947c8-5765-42fe-e699-936f39d8a190"
+      },
+      "execution_count": 43,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "\n",
+            "========================================\n",
+            "FINAL RESULTS\n",
+            "========================================\n",
+            "ROC-AUC Score   : 0.6423\n",
+            "True Negatives  : 18046\n",
+            "False Positives : 37\n",
+            "False Negatives : 2235\n",
+            "True Positives  : 36\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [],
+      "metadata": {
+        "id": "mZq3RobvUaN8"
+      },
+      "execution_count": null,
+      "outputs": []
+    }
+  ]
+}
